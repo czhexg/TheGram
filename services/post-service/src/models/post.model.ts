@@ -1,16 +1,12 @@
 import mongoose, { Date } from "mongoose";
-
-enum PostStatus {
-    PUBLISHED = "PUBLISHED",
-    DELETED = "DELETED",
-}
+import { Status } from "./constants";
 
 interface IPost extends mongoose.Document {
     authorId: string;
     content: string;
     hashtags: string[];
     images: string[];
-    status: PostStatus;
+    status: Status;
     likeCount: number;
     commentCount: number;
     createdAt: Date;
@@ -23,11 +19,13 @@ const PostSchema = new mongoose.Schema<IPost>(
         content: { type: String, required: true },
         hashtags: { type: [String], default: [] },
         images: { type: [String], default: [] },
-        status: { type: String, default: PostStatus.PUBLISHED },
+        status: { type: String, default: Status.ACTIVE },
         likeCount: { type: Number, default: 0 },
         commentCount: { type: Number, default: 0 },
     },
     { timestamps: true }
 );
 
-export const Post = mongoose.model<IPost>("Post", PostSchema);
+const Post = mongoose.model<IPost>("Post", PostSchema);
+
+export { Post, IPost };

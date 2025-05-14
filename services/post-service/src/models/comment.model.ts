@@ -1,10 +1,12 @@
 import mongoose, { Date, ObjectId } from "mongoose";
+import { Status } from "./constants";
 
 interface IComment extends mongoose.Document {
     postId: ObjectId;
     parentCommentId?: ObjectId | null;
     authorId: string;
     text: string;
+    status: Status;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -19,8 +21,11 @@ const CommentSchema = new mongoose.Schema<IComment>(
         },
         authorId: { type: String, required: true },
         text: { type: String, required: true },
+        status: Status.ACTIVE,
     },
     { timestamps: true }
 );
 
-export const Comment = mongoose.model<IComment>("Comment", CommentSchema);
+const Comment = mongoose.model<IComment>("Comment", CommentSchema);
+
+export { Comment, IComment };

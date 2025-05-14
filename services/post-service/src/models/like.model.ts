@@ -17,4 +17,6 @@ const LikeSchema = new mongoose.Schema<ILike>(
 // Prevent duplicate likes
 LikeSchema.index({ postId: 1, userId: 1 }, { unique: true });
 
-export const Like = mongoose.model<ILike>("Like", LikeSchema);
+const Like = mongoose.model<ILike>("Like", LikeSchema);
+
+export { Like, ILike };
