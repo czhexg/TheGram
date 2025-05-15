@@ -1,31 +1,39 @@
-import { Model, Document } from "mongoose";
+import { Status } from "@src/models/constants";
+import { Model, Document, SaveOptions, QueryOptions } from "mongoose";
 
 export abstract class BaseRepository<T extends Document> {
     constructor(protected readonly model: Model<T>) {}
 
-    async create(dto: any): Promise<T> {
-        return this.model.create(dto);
+    async create(dto: any, options?: SaveOptions): Promise<T> {
+        return this.model.create([dto], options).then((res) => res[0]);
     }
 
-    async findById(id: string): Promise<T | null> {
-        return this.model.findById(id).exec();
+    async findById(id: string, options?: QueryOptions): Promise<T | null> {
+        return this.model.findById(id, options).exec();
     }
 
-    async update(id: string, dto: Partial<T>): Promise<T | null> {
-        return this.model.findByIdAndUpdate(id, dto, { new: true }).exec();
+    async update(
+        id: string,
+        dto: Partial<T>,
+        options?: QueryOptions
+    ): Promise<T | null> {
+        return this.model
+            .findByIdAndUpdate(id, dto, { new: true, ...options })
+            .exec();
     }
 
-    async delete(id: string): Promise<T | null> {
+    // soft delete
+    async delete(id: string, options?: QueryOptions): Promise<T | null> {
         return this.model
             .findByIdAndUpdate(
                 id,
-                { status: "deleted" } as any, // Cast to 'any' if status doesn't exist in T
-                { new: true }
+                { status: Status.DELETED } as any, // Cast to 'any' if status doesn't exist in T
+                { new: true, ...options }
             )
             .exec();
     }
 
-    async hardDelete(id: string): Promise<T | null> {
-        return this.model.findByIdAndDelete(id).exec();
+    async hardDelete(id: string, options?: QueryOptions): Promise<T | null> {
+        return this.model.findByIdAndDelete(id, options).exec();
     }
 }
