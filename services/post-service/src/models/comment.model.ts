@@ -21,7 +21,7 @@ const CommentSchema = new mongoose.Schema<IComment>(
         },
         authorId: { type: String, required: true },
         text: { type: String, required: true },
-        status: Status.ACTIVE,
+        status: { type: String, default: Status.ACTIVE },
     },
     { timestamps: true }
 );
