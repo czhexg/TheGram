@@ -28,9 +28,11 @@ export class PostService {
 
     async updatePost(
         id: mongoose.Types.ObjectId,
-        postData: Partial<IPost>
+        updateData: Partial<IPost>
     ): Promise<IPost | null> {
-        return this.postRepository.update(id, postData);
+        // Prevent changing certain fields
+        const { authorId, ...safeUpdateData } = updateData;
+        return this.postRepository.update(id, safeUpdateData);
     }
 
     async deletePost(id: mongoose.Types.ObjectId): Promise<IPost | null> {
