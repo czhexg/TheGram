@@ -1,4 +1,4 @@
-import { QueryOptions } from "mongoose";
+import mongoose, { QueryOptions } from "mongoose";
 import { Like, ILike } from "../models/like.model";
 import { BaseRepository } from "./base.repository";
 
@@ -7,7 +7,10 @@ export class LikeRepository extends BaseRepository<ILike> {
         super(Like);
     }
 
-    async findByPost(postId: string, options?: QueryOptions): Promise<ILike[]> {
+    async findByPost(
+        postId: mongoose.Types.ObjectId,
+        options?: QueryOptions
+    ): Promise<ILike[]> {
         return this.model.find({ postId }, options).exec();
     }
 
@@ -16,7 +19,7 @@ export class LikeRepository extends BaseRepository<ILike> {
     }
 
     async findByPostAndUser(
-        postId: string,
+        postId: mongoose.Types.ObjectId,
         userId: string,
         options?: QueryOptions
     ): Promise<ILike | null> {

@@ -1,4 +1,4 @@
-import { QueryOptions } from "mongoose";
+import mongoose, { QueryOptions } from "mongoose";
 import { Post, IPost } from "../models/post.model";
 import { BaseRepository } from "./base.repository";
 
@@ -15,7 +15,7 @@ export class PostRepository extends BaseRepository<IPost> {
     }
 
     async incrementCounter(
-        id: string,
+        id: mongoose.Types.ObjectId,
         field: "likeCount" | "commentCount",
         options?: QueryOptions
     ): Promise<IPost | null> {
@@ -29,7 +29,7 @@ export class PostRepository extends BaseRepository<IPost> {
     }
 
     async decrementCounter(
-        id: string,
+        id: mongoose.Types.ObjectId,
         field: "likeCount" | "commentCount",
         options?: QueryOptions
     ): Promise<IPost | null> {

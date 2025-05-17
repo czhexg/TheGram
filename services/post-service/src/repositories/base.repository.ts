@@ -1,19 +1,22 @@
 import { Status } from "@src/models/constants";
-import { Model, Document, SaveOptions, QueryOptions } from "mongoose";
+import mongoose, { Model, Document, SaveOptions, QueryOptions } from "mongoose";
 
 export abstract class BaseRepository<T extends Document> {
     constructor(protected readonly model: Model<T>) {}
 
-    async create(dto: any, options?: SaveOptions): Promise<T> {
+    async create(dto: Partial<T>, options?: SaveOptions): Promise<T> {
         return this.model.create([dto], options).then((res) => res[0]);
     }
 
-    async findById(id: string, options?: QueryOptions): Promise<T | null> {
+    async findById(
+        id: mongoose.Types.ObjectId,
+        options?: QueryOptions
+    ): Promise<T | null> {
         return this.model.findById(id, options).exec();
     }
 
     async update(
-        id: string,
+        id: mongoose.Types.ObjectId,
         dto: Partial<T>,
         options?: QueryOptions
     ): Promise<T | null> {
@@ -23,7 +26,10 @@ export abstract class BaseRepository<T extends Document> {
     }
 
     // soft delete
-    async delete(id: string, options?: QueryOptions): Promise<T | null> {
+    async delete(
+        id: mongoose.Types.ObjectId,
+        options?: QueryOptions
+    ): Promise<T | null> {
         return this.model
             .findByIdAndUpdate(
                 id,
@@ -33,7 +39,10 @@ export abstract class BaseRepository<T extends Document> {
             .exec();
     }
 
-    async hardDelete(id: string, options?: QueryOptions): Promise<T | null> {
+    async hardDelete(
+        id: mongoose.Types.ObjectId,
+        options?: QueryOptions
+    ): Promise<T | null> {
         return this.model.findByIdAndDelete(id, options).exec();
     }
 }

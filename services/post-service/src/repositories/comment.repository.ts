@@ -1,4 +1,4 @@
-import { QueryOptions } from "mongoose";
+import mongoose, { QueryOptions } from "mongoose";
 import { Comment, IComment } from "../models/comment.model";
 import { BaseRepository } from "./base.repository";
 
@@ -8,7 +8,7 @@ export class CommentRepository extends BaseRepository<IComment> {
     }
 
     async findByPost(
-        postId: string,
+        postId: mongoose.Types.ObjectId,
         options?: QueryOptions
     ): Promise<IComment[]> {
         return this.model.find({ postId }, options).exec();
@@ -22,7 +22,7 @@ export class CommentRepository extends BaseRepository<IComment> {
     }
 
     async findReplies(
-        parentCommentId: string,
+        parentCommentId: mongoose.Types.ObjectId,
         options?: QueryOptions
     ): Promise<IComment[]> {
         return this.model.find({ parentCommentId }, options).exec();
