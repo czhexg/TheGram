@@ -49,16 +49,18 @@ describe("PostRepository", () => {
                 content: "Update me",
             });
 
+            const post_id = post._id as mongoose.Types.ObjectId;
+
             const updatedData = {
                 content: "Updated post",
                 hashtags: ["test#1", "test#2"],
             };
             const updatedPost = await postRepository.update(
-                post._id!.toString(),
+                post_id,
                 updatedData
             );
 
-            expect(updatedPost?._id!.toString()).toEqual(post._id!.toString());
+            expect(updatedPost?._id!.toString()).toEqual(post_id.toString());
             expect(updatedPost?.content).toBe("Updated post");
             expect(updatedPost?.hashtags).toEqual(["test#1", "test#2"]);
         });
@@ -69,7 +71,7 @@ describe("PostRepository", () => {
                 hashtags: ["test#1", "test#2"],
             };
             const updatedPost = await postRepository.update(
-                new mongoose.Types.ObjectId().toString(),
+                new mongoose.Types.ObjectId(),
                 updatedData
             );
             expect(updatedPost).toBeNull();
@@ -84,17 +86,17 @@ describe("PostRepository", () => {
                     content: "Soft delete me",
                 });
 
-                await postRepository.delete(post._id!.toString());
-                const foundPost = await postRepository.findById(
-                    post._id!.toString()
-                );
+                const post_id = post._id as mongoose.Types.ObjectId;
+
+                await postRepository.delete(post_id);
+                const foundPost = await postRepository.findById(post_id);
 
                 expect(foundPost?.status).toBe(Status.DELETED);
             });
 
             it("should return null when post doesnt exist", async () => {
                 const post = await postRepository.delete(
-                    new mongoose.Types.ObjectId().toString()
+                    new mongoose.Types.ObjectId()
                 );
                 expect(post).toBeNull();
             });
@@ -107,17 +109,17 @@ describe("PostRepository", () => {
                     content: "Hard delete me",
                 });
 
-                await postRepository.hardDelete(post._id!.toString());
-                const foundPost = await postRepository.findById(
-                    post._id!.toString()
-                );
+                const post_id = post._id as mongoose.Types.ObjectId;
+
+                await postRepository.hardDelete(post_id);
+                const foundPost = await postRepository.findById(post_id);
 
                 expect(foundPost).toBeNull();
             });
 
             it("should return null when post doesnt exist", async () => {
                 const post = await postRepository.hardDelete(
-                    new mongoose.Types.ObjectId().toString()
+                    new mongoose.Types.ObjectId()
                 );
                 expect(post).toBeNull();
             });
@@ -130,16 +132,17 @@ describe("PostRepository", () => {
                 authorId: "user123",
                 content: "Find me",
             });
-            const foundPost = await postRepository.findById(
-                post._id!.toString()
-            );
 
-            expect(foundPost?._id!.toString()).toEqual(post._id!.toString());
+            const post_id = post._id as mongoose.Types.ObjectId;
+
+            const foundPost = await postRepository.findById(post_id);
+
+            expect(foundPost?._id!.toString()).toEqual(post_id.toString());
         });
 
         it("should return null when post doesnt exist", async () => {
             const foundPost = await postRepository.findById(
-                new mongoose.Types.ObjectId().toString()
+                new mongoose.Types.ObjectId()
             );
             expect(foundPost).toBeNull();
         });
@@ -178,8 +181,10 @@ describe("PostRepository", () => {
                 content: "Like me",
             });
 
+            const post_id = post._id as mongoose.Types.ObjectId;
+
             const likedPost = await postRepository.incrementCounter(
-                post._id!.toString(),
+                post_id,
                 "likeCount"
             );
 
@@ -192,8 +197,10 @@ describe("PostRepository", () => {
                 content: "Comment me",
             });
 
+            const post_id = post._id as mongoose.Types.ObjectId;
+
             const commentedPost = await postRepository.incrementCounter(
-                post._id!.toString(),
+                post_id,
                 "commentCount"
             );
 
@@ -202,7 +209,7 @@ describe("PostRepository", () => {
 
         it("should return null when post doesnt exist", async () => {
             const post = await postRepository.incrementCounter(
-                new mongoose.Types.ObjectId().toString(),
+                new mongoose.Types.ObjectId(),
                 "likeCount"
             );
             expect(post).toBeNull();
@@ -217,8 +224,10 @@ describe("PostRepository", () => {
                 likeCount: 1,
             });
 
+            const post_id = post._id as mongoose.Types.ObjectId;
+
             const unlikedPost = await postRepository.decrementCounter(
-                post._id!.toString(),
+                post_id,
                 "likeCount"
             );
 
@@ -232,8 +241,10 @@ describe("PostRepository", () => {
                 commentCount: 1,
             });
 
+            const post_id = post._id as mongoose.Types.ObjectId;
+
             const uncommentedPost = await postRepository.decrementCounter(
-                post._id!.toString(),
+                post_id,
                 "commentCount"
             );
 
@@ -242,7 +253,7 @@ describe("PostRepository", () => {
 
         it("should return null when post doesnt exist", async () => {
             const post = await postRepository.decrementCounter(
-                new mongoose.Types.ObjectId().toString(),
+                new mongoose.Types.ObjectId(),
                 "likeCount"
             );
             expect(post).toBeNull();

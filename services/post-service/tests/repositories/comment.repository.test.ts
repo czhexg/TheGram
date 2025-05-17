@@ -7,7 +7,7 @@ import { Status } from "@src/models/constants";
 
 describe("CommentRepository", () => {
     let commentRepository: CommentRepository;
-    const testPostId = new mongoose.Types.ObjectId().toString();
+    const testPostId = new mongoose.Types.ObjectId();
     const testAuthorId = "user123";
     const testCommentText = "Test comment";
 
@@ -33,7 +33,7 @@ describe("CommentRepository", () => {
             });
 
             expect(comment).toHaveProperty("_id");
-            expect(comment.postId.toString()).toBe(testPostId);
+            expect(comment.postId.toString()).toBe(testPostId.toString());
             expect(comment.text).toBe(testCommentText);
             expect(comment.parentCommentId).toBeNull();
         });
@@ -49,7 +49,7 @@ describe("CommentRepository", () => {
                 postId: testPostId,
                 authorId: "user456",
                 text: "Reply comment",
-                parentCommentId: parentComment._id,
+                parentCommentId: parentComment._id as mongoose.Types.ObjectId,
             });
 
             expect(childComment.parentCommentId?.toString()).toBe(
@@ -73,7 +73,7 @@ describe("CommentRepository", () => {
                     text: "Comment 2",
                 }),
                 commentRepository.create({
-                    postId: new mongoose.Types.ObjectId().toString(),
+                    postId: new mongoose.Types.ObjectId(),
                     authorId: testAuthorId,
                     text: "Other post comment",
                 }),
@@ -81,12 +81,12 @@ describe("CommentRepository", () => {
 
             const comments = await commentRepository.findByPost(testPostId);
             expect(comments).toHaveLength(2);
-            expect(comments[0].postId.toString()).toBe(testPostId);
+            expect(comments[0].postId.toString()).toBe(testPostId.toString());
         });
 
         it("should return empty array for post with no comments", async () => {
             const comments = await commentRepository.findByPost(
-                new mongoose.Types.ObjectId().toString()
+                new mongoose.Types.ObjectId()
             );
             expect(comments).toEqual([]);
         });
@@ -106,13 +106,15 @@ describe("CommentRepository", () => {
                     postId: testPostId,
                     authorId: "user456",
                     text: "Reply 1",
-                    parentCommentId: parentComment._id,
+                    parentCommentId:
+                        parentComment._id as mongoose.Types.ObjectId,
                 }),
                 commentRepository.create({
                     postId: testPostId,
                     authorId: "user789",
                     text: "Reply 2",
-                    parentCommentId: parentComment._id,
+                    parentCommentId:
+                        parentComment._id as mongoose.Types.ObjectId,
                 }),
             ]);
 
@@ -124,7 +126,7 @@ describe("CommentRepository", () => {
             });
 
             const replies = await commentRepository.findReplies(
-                parentComment._id!.toString()
+                parentComment._id! as mongoose.Types.ObjectId
             );
             expect(replies).toHaveLength(2);
             replies.forEach((reply) => {
@@ -142,7 +144,7 @@ describe("CommentRepository", () => {
             });
 
             const replies = await commentRepository.findReplies(
-                comment._id!.toString()
+                comment._id! as mongoose.Types.ObjectId
             );
             expect(replies).toEqual([]);
         });
@@ -158,7 +160,7 @@ describe("CommentRepository", () => {
                     text: "Comment 1",
                 }),
                 commentRepository.create({
-                    postId: new mongoose.Types.ObjectId().toString(),
+                    postId: new mongoose.Types.ObjectId(),
                     authorId: testAuthorId,
                     text: "Comment 2",
                 }),
@@ -187,7 +189,7 @@ describe("CommentRepository", () => {
                 });
 
                 const deletedComment = await commentRepository.delete(
-                    comment._id!.toString()
+                    comment._id! as mongoose.Types.ObjectId
                 );
                 expect(deletedComment).not.toBeNull();
 
@@ -197,7 +199,7 @@ describe("CommentRepository", () => {
 
             it("should return null when deleting non-existent comment", async () => {
                 const result = await commentRepository.delete(
-                    new mongoose.Types.ObjectId().toString()
+                    new mongoose.Types.ObjectId()
                 );
                 expect(result).toBeNull();
             });
@@ -211,7 +213,9 @@ describe("CommentRepository", () => {
                     text: testCommentText,
                 });
 
-                await commentRepository.hardDelete(comment._id!.toString());
+                await commentRepository.hardDelete(
+                    comment._id as mongoose.Types.ObjectId
+                );
 
                 const foundComment = await Comment.findById(comment._id);
                 expect(foundComment).toBeNull();
@@ -219,7 +223,7 @@ describe("CommentRepository", () => {
 
             it("should return null when deleting non-existent comment", async () => {
                 const result = await commentRepository.hardDelete(
-                    new mongoose.Types.ObjectId().toString()
+                    new mongoose.Types.ObjectId()
                 );
                 expect(result).toBeNull();
             });

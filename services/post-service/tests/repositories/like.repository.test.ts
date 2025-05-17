@@ -8,7 +8,7 @@ import { Container } from "@src/container";
 describe("LikeRepository", () => {
     let likeRepository: LikeRepository;
     const testUserId = "user123";
-    const testPostId = new mongoose.Types.ObjectId().toString();
+    const testPostId = new mongoose.Types.ObjectId();
 
     beforeAll(async () => {
         await mongoose.connect(process.env.MONGO_DB_TEST_URI!);
@@ -32,7 +32,7 @@ describe("LikeRepository", () => {
             });
 
             expect(like).toHaveProperty("_id");
-            expect(like.postId.toString()).toBe(testPostId);
+            expect(like.postId).toEqual(testPostId);
             expect(like.userId).toBe(testUserId);
         });
 
@@ -69,13 +69,13 @@ describe("LikeRepository", () => {
             expect(likes).toHaveLength(2);
 
             for (const like of likes) {
-                expect(like.postId.toString()).toBe(testPostId);
+                expect(like.postId).toEqual(testPostId);
             }
         });
 
         it("should return empty array for post with no likes", async () => {
             const likes = await likeRepository.findByPost(
-                new mongoose.Types.ObjectId().toString()
+                new mongoose.Types.ObjectId()
             );
             expect(likes).toEqual([]);
         });
@@ -89,7 +89,7 @@ describe("LikeRepository", () => {
                 userId: testUserId,
             });
             await likeRepository.create({
-                postId: new mongoose.Types.ObjectId().toString(),
+                postId: new mongoose.Types.ObjectId(),
                 userId: testUserId,
             });
             const likes = await likeRepository.findByUser(testUserId);
@@ -125,7 +125,7 @@ describe("LikeRepository", () => {
 
         it("should return null when like doesnt exist", async () => {
             const foundLike = await likeRepository.findByPostAndUser(
-                new mongoose.Types.ObjectId().toString(),
+                new mongoose.Types.ObjectId(),
                 "nonexistent-user-id"
             );
             expect(foundLike).toBeNull();
@@ -139,7 +139,9 @@ describe("LikeRepository", () => {
                 userId: testUserId,
             });
 
-            await likeRepository.hardDelete(like._id!.toString());
+            await likeRepository.hardDelete(
+                like._id as mongoose.Types.ObjectId
+            );
 
             const foundLike = await Like.findById(like._id);
             expect(foundLike).toBeNull();
@@ -147,7 +149,7 @@ describe("LikeRepository", () => {
 
         it("should return null when deleting non-existent like", async () => {
             const result = await likeRepository.hardDelete(
-                new mongoose.Types.ObjectId().toString()
+                new mongoose.Types.ObjectId()
             );
             expect(result).toBeNull();
         });
