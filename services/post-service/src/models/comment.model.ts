@@ -2,8 +2,8 @@ import mongoose, { Date, ObjectId } from "mongoose";
 import { Status } from "./constants";
 
 interface IComment extends mongoose.Document {
-    postId: ObjectId;
-    parentCommentId?: ObjectId | null;
+    postId: mongoose.Types.ObjectId;
+    parentCommentId?: mongoose.Types.ObjectId | null;
     authorId: string;
     text: string;
     status: Status;
@@ -13,9 +13,13 @@ interface IComment extends mongoose.Document {
 
 const CommentSchema = new mongoose.Schema<IComment>(
     {
-        postId: { type: mongoose.Types.ObjectId, ref: "Post", required: true },
+        postId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Post",
+            required: true,
+        },
         parentCommentId: {
-            type: mongoose.Types.ObjectId,
+            type: mongoose.Schema.Types.ObjectId,
             ref: "Comment", // Self-reference to allow nesting
             default: null, // Explicitly set to null if not a reply
         },
