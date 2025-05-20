@@ -19,14 +19,15 @@ export class CommentService {
         session.startTransaction();
 
         try {
-            const [createdComment] = await Promise.all([
-                this.commentRepository.create(commentData, { session }),
-                this.postRepository.incrementCounter(
-                    commentData.postId!,
-                    "commentCount",
-                    { session }
-                ),
-            ]);
+            const createdComment = await this.commentRepository.create(
+                commentData,
+                { session }
+            );
+            await this.postRepository.incrementCounter(
+                commentData.postId!,
+                "commentCount",
+                { session }
+            );
             await session.commitTransaction();
             return createdComment;
         } catch (error) {
@@ -109,14 +110,14 @@ export class CommentService {
                 throw new Error("Comment not found");
             }
 
-            const [deletedComment] = await Promise.all([
-                this.commentRepository.delete(id, { session }),
-                this.postRepository.decrementCounter(
-                    foundComment.postId!,
-                    "commentCount",
-                    { session }
-                ),
-            ]);
+            const deletedComment = await this.commentRepository.delete(id, {
+                session,
+            });
+            await this.postRepository.decrementCounter(
+                foundComment.postId!,
+                "commentCount",
+                { session }
+            );
             await session.commitTransaction();
             return deletedComment;
         } catch (error) {
@@ -143,14 +144,14 @@ export class CommentService {
                 throw new Error("Comment not found");
             }
 
-            const [deletedComment] = await Promise.all([
-                this.commentRepository.hardDelete(id, { session }),
-                this.postRepository.decrementCounter(
-                    foundComment.postId!,
-                    "commentCount",
-                    { session }
-                ),
-            ]);
+            const deletedComment = await this.commentRepository.hardDelete(id, {
+                session,
+            });
+            await this.postRepository.decrementCounter(
+                foundComment.postId!,
+                "commentCount",
+                { session }
+            );
             await session.commitTransaction();
             return deletedComment;
         } catch (error) {

@@ -19,14 +19,15 @@ export class LikeService {
         session.startTransaction();
 
         try {
-            const [createdLike] = await Promise.all([
-                this.likeRepository.create(likeData, { session }),
-                this.postRepository.incrementCounter(
-                    likeData.postId!,
-                    "likeCount",
-                    { session }
-                ),
-            ]);
+            const createdLike = await this.likeRepository.create(likeData, {
+                session,
+            });
+            await this.postRepository.incrementCounter(
+                likeData.postId!,
+                "likeCount",
+                { session }
+            );
+
             await session.commitTransaction();
             return createdLike;
         } catch (error) {
@@ -91,15 +92,14 @@ export class LikeService {
             if (!foundLike) {
                 throw new Error("Like not found");
             }
-
-            const [deletedLike] = await Promise.all([
-                this.likeRepository.hardDelete(id, { session }),
-                this.postRepository.decrementCounter(
-                    foundLike.postId!,
-                    "likeCount",
-                    { session }
-                ),
-            ]);
+            const deletedLike = await this.likeRepository.hardDelete(id, {
+                session,
+            });
+            await this.postRepository.decrementCounter(
+                foundLike.postId!,
+                "likeCount",
+                { session }
+            );
             await session.commitTransaction();
             return deletedLike;
         } catch (error) {
