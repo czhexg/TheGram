@@ -3,12 +3,16 @@ import { CommentRepository } from "@src/repositories/comment.repository";
 import mongoose from "mongoose";
 import { IComment } from "@src/models/comment.model";
 import { Status } from "@src/models/constants";
+import { PostRepository } from "@src/repositories/post.repository";
+import { IPost } from "@src/models/post.model";
 
 jest.mock("@src/repositories/comment.repository");
+jest.mock("@src/repositories/post.repository");
 
 describe("CommentService", () => {
     let commentService: CommentService;
     let commentRepository: jest.Mocked<CommentRepository>;
+    let postRepository: jest.Mocked<PostRepository>;
 
     // Mock data
     const mockComment = {
@@ -28,24 +32,68 @@ describe("CommentService", () => {
         status: Status.ACTIVE,
     } as Partial<IComment> as IComment;
 
+    const mockPost = {
+        _id: mockComment.postId,
+        title: "Test Post",
+        content: "Test Content",
+        authorId: "user123",
+        likeCount: 0,
+        commentCount: 1,
+        status: Status.ACTIVE,
+    } as Partial<IPost> as IPost;
+
+    const mockSession = {
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        abortTransaction: jest.fn(),
+        endSession: jest.fn(),
+        withTransaction: jest.fn(),
+    } as unknown as mongoose.ClientSession;
+
     beforeEach(() => {
         jest.clearAllMocks();
         commentRepository =
             new CommentRepository() as jest.Mocked<CommentRepository>;
-        commentService = new CommentService(commentRepository);
+        postRepository = new PostRepository() as jest.Mocked<PostRepository>;
+        commentService = new CommentService(commentRepository, postRepository);
+
+        jest.spyOn(mongoose, "startSession").mockImplementation(() =>
+            Promise.resolve(mockSession)
+        );
     });
 
     describe("createComment", () => {
-        it("should create a new comment", async () => {
+        it("should create a new comment and increment post comment count", async () => {
             commentRepository.create.mockResolvedValue(mockComment);
+            postRepository.incrementCounter.mockResolvedValue(mockPost);
 
             const result = await commentService.createComment(mockComment);
 
+            expect(result).toEqual(mockComment);
             expect(commentRepository.create).toHaveBeenCalledWith(
                 mockComment,
-                undefined
+                expect.objectContaining({ session: expect.anything() })
             );
-            expect(result).toEqual(mockComment);
+            expect(postRepository.incrementCounter).toHaveBeenCalledWith(
+                mockComment.postId,
+                "commentCount",
+                expect.objectContaining({ session: expect.anything() })
+            );
+
+            expect(mockSession.commitTransaction).toHaveBeenCalled();
+            expect(mockSession.abortTransaction).not.toHaveBeenCalled();
+        });
+
+        it("should abort transaction if like creation fails", async () => {
+            commentRepository.create.mockRejectedValue(new Error("DB error"));
+
+            await expect(
+                commentService.createComment(mockComment)
+            ).rejects.toThrow("DB error");
+
+            // Verify transaction flow
+            expect(mockSession.abortTransaction).toHaveBeenCalled();
+            expect(mockSession.commitTransaction).not.toHaveBeenCalled();
         });
     });
 
@@ -58,8 +106,7 @@ describe("CommentService", () => {
             );
 
             expect(commentRepository.findById).toHaveBeenCalledWith(
-                mockComment._id,
-                undefined
+                mockComment._id
             );
             expect(result).toEqual(mockComment);
         });
@@ -85,8 +132,7 @@ describe("CommentService", () => {
             );
 
             expect(commentRepository.findByPost).toHaveBeenCalledWith(
-                mockComment.postId,
-                undefined
+                mockComment.postId
             );
             expect(result).toEqual(comments);
         });
@@ -112,8 +158,7 @@ describe("CommentService", () => {
             );
 
             expect(commentRepository.findByAuthor).toHaveBeenCalledWith(
-                mockComment.authorId,
-                undefined
+                mockComment.authorId
             );
             expect(result).toEqual(comments);
         });
@@ -139,8 +184,7 @@ describe("CommentService", () => {
             );
 
             expect(commentRepository.findReplies).toHaveBeenCalledWith(
-                mockComment._id,
-                undefined
+                mockComment._id
             );
             expect(result).toEqual(replies);
         });
@@ -172,8 +216,7 @@ describe("CommentService", () => {
 
             expect(commentRepository.update).toHaveBeenCalledWith(
                 mockComment._id,
-                updateData,
-                undefined
+                updateData
             );
             expect(result).toEqual(updatedComment);
         });
@@ -200,47 +243,72 @@ describe("CommentService", () => {
 
             expect(commentRepository.update).toHaveBeenCalledWith(
                 mockComment._id,
-                expectedUpdate,
-                undefined
+                expectedUpdate
             );
             expect(result).toEqual(updatedComment);
         });
     });
 
     describe("deleteComment", () => {
-        it("should soft delete a comment", async () => {
+        it("should soft delete a comment and decrement post comment count", async () => {
             const deletedComment = {
                 ...mockComment,
                 status: Status.DELETED,
             } as IComment;
             commentRepository.delete.mockResolvedValue(deletedComment);
+            commentRepository.findById.mockResolvedValue(mockComment);
+            postRepository.decrementCounter.mockResolvedValue({
+                ...mockPost,
+                commentCount: 0,
+            } as IPost);
 
             const result = await commentService.deleteComment(
                 mockComment._id! as mongoose.Types.ObjectId
             );
 
+            expect(result).toEqual(deletedComment);
             expect(commentRepository.delete).toHaveBeenCalledWith(
                 mockComment._id,
-                undefined
+                expect.objectContaining({ session: expect.anything() })
             );
-            expect(result).toEqual(deletedComment);
+            expect(postRepository.decrementCounter).toHaveBeenCalledWith(
+                mockComment.postId,
+                "commentCount",
+                expect.objectContaining({ session: expect.anything() })
+            );
             expect(result?.status).toBe(Status.DELETED);
+
+            expect(mockSession.commitTransaction).toHaveBeenCalled();
+            expect(mockSession.abortTransaction).not.toHaveBeenCalled();
         });
     });
 
     describe("hardDeleteComment", () => {
         it("should permanently delete a comment", async () => {
             commentRepository.hardDelete.mockResolvedValue(mockComment);
+            commentRepository.findById.mockResolvedValue(mockComment);
+            postRepository.decrementCounter.mockResolvedValue({
+                ...mockPost,
+                commentCount: 0,
+            } as IPost);
 
             const result = await commentService.hardDeleteComment(
                 mockComment._id! as mongoose.Types.ObjectId
             );
 
+            expect(result).toEqual(mockComment);
             expect(commentRepository.hardDelete).toHaveBeenCalledWith(
                 mockComment._id,
-                undefined
+                expect.objectContaining({ session: expect.anything() })
             );
-            expect(result).toEqual(mockComment);
+            expect(postRepository.decrementCounter).toHaveBeenCalledWith(
+                mockComment.postId,
+                "commentCount",
+                expect.objectContaining({ session: expect.anything() })
+            );
+
+            expect(mockSession.commitTransaction).toHaveBeenCalled();
+            expect(mockSession.abortTransaction).not.toHaveBeenCalled();
         });
     });
 

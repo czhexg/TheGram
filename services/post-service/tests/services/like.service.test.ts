@@ -1,13 +1,18 @@
 import { LikeService } from "@src/services/like.service";
 import { LikeRepository } from "@src/repositories/like.repository";
+import { PostRepository } from "@src/repositories/post.repository";
 import mongoose from "mongoose";
 import { ILike } from "@src/models/like.model";
+import { Status } from "@src/models/constants";
+import { IPost } from "@src/models/post.model";
 
 jest.mock("@src/repositories/like.repository");
+jest.mock("@src/repositories/post.repository");
 
 describe("LikeService", () => {
     let likeService: LikeService;
     let likeRepository: jest.Mocked<LikeRepository>;
+    let postRepository: jest.Mocked<PostRepository>;
 
     // Mock data
     const mockLike = {
@@ -22,23 +27,67 @@ describe("LikeService", () => {
         userId: "user456",
     } as Partial<ILike> as ILike;
 
+    const mockPost = {
+        _id: mockLike.postId,
+        title: "Test Post",
+        content: "Test Content",
+        authorId: "user123",
+        likeCount: 1,
+        commentCount: 0,
+        status: Status.ACTIVE,
+    } as Partial<IPost> as IPost;
+
+    const mockSession = {
+        startTransaction: jest.fn(),
+        commitTransaction: jest.fn(),
+        abortTransaction: jest.fn(),
+        endSession: jest.fn(),
+        withTransaction: jest.fn(),
+    } as unknown as mongoose.ClientSession;
+
     beforeEach(() => {
         jest.clearAllMocks();
         likeRepository = new LikeRepository() as jest.Mocked<LikeRepository>;
-        likeService = new LikeService(likeRepository);
+        postRepository = new PostRepository() as jest.Mocked<PostRepository>;
+        likeService = new LikeService(likeRepository, postRepository);
+
+        jest.spyOn(mongoose, "startSession").mockImplementation(() =>
+            Promise.resolve(mockSession)
+        );
     });
 
     describe("createLike", () => {
-        it("should create a new like", async () => {
+        it("should create a like and increment post like count", async () => {
             likeRepository.create.mockResolvedValue(mockLike);
+            postRepository.incrementCounter.mockResolvedValue(mockPost);
 
             const result = await likeService.createLike(mockLike);
 
+            expect(result).toEqual(mockLike);
             expect(likeRepository.create).toHaveBeenCalledWith(
                 mockLike,
-                undefined
+                expect.objectContaining({ session: expect.anything() })
             );
-            expect(result).toEqual(mockLike);
+            expect(postRepository.incrementCounter).toHaveBeenCalledWith(
+                mockLike.postId,
+                "likeCount",
+                expect.objectContaining({ session: expect.anything() })
+            );
+
+            expect(mockSession.commitTransaction).toHaveBeenCalled();
+            expect(mockSession.abortTransaction).not.toHaveBeenCalled();
+        });
+
+        it("should abort transaction if like creation fails", async () => {
+            likeRepository.create.mockRejectedValue(new Error("DB error"));
+
+            await expect(likeService.createLike(mockLike)).rejects.toThrow(
+                "DB error"
+            );
+
+            // Verify transaction flow
+            expect(mockSession.abortTransaction).toHaveBeenCalled();
+            expect(mockSession.commitTransaction).not.toHaveBeenCalled();
         });
     });
 
@@ -50,10 +99,7 @@ describe("LikeService", () => {
                 mockLike._id! as mongoose.Types.ObjectId
             );
 
-            expect(likeRepository.findById).toHaveBeenCalledWith(
-                mockLike._id,
-                undefined
-            );
+            expect(likeRepository.findById).toHaveBeenCalledWith(mockLike._id);
             expect(result).toEqual(mockLike);
         });
 
@@ -76,8 +122,7 @@ describe("LikeService", () => {
             const result = await likeService.getLikesByPost(mockLike.postId!);
 
             expect(likeRepository.findByPost).toHaveBeenCalledWith(
-                mockLike.postId,
-                undefined
+                mockLike.postId
             );
             expect(result).toEqual(likes);
             expect(result.length).toBe(2);
@@ -100,8 +145,7 @@ describe("LikeService", () => {
             const result = await likeService.getLikesByUser(mockLike.userId!);
 
             expect(likeRepository.findByUser).toHaveBeenCalledWith(
-                mockLike.userId,
-                undefined
+                mockLike.userId
             );
             expect(result).toEqual(likes);
         });
@@ -118,8 +162,7 @@ describe("LikeService", () => {
 
             expect(likeRepository.findByPostAndUser).toHaveBeenCalledWith(
                 mockLike.postId,
-                mockLike.userId,
-                undefined
+                mockLike.userId
             );
             expect(result).toEqual(mockLike);
         });
@@ -137,18 +180,31 @@ describe("LikeService", () => {
     });
 
     describe("deleteLike", () => {
-        it("should delete a like", async () => {
+        it("should delete a like and decreemnt post like count", async () => {
+            likeRepository.findById.mockResolvedValue(mockLike);
             likeRepository.hardDelete.mockResolvedValue(mockLike);
+            postRepository.decrementCounter.mockResolvedValue({
+                ...mockPost,
+                likeCount: 0,
+            } as IPost);
 
             const result = await likeService.deleteLike(
                 mockLike._id! as mongoose.Types.ObjectId
             );
 
+            expect(result).toEqual(mockLike);
             expect(likeRepository.hardDelete).toHaveBeenCalledWith(
                 mockLike._id,
-                undefined
+                expect.objectContaining({ session: expect.anything() })
             );
-            expect(result).toEqual(mockLike);
+            expect(postRepository.decrementCounter).toHaveBeenCalledWith(
+                mockLike.postId,
+                "likeCount",
+                expect.objectContaining({ session: expect.anything() })
+            );
+
+            expect(mockSession.commitTransaction).toHaveBeenCalled();
+            expect(mockSession.abortTransaction).not.toHaveBeenCalled();
         });
     });
 
@@ -164,18 +220,18 @@ describe("LikeService", () => {
 
             expect(likeRepository.findByPostAndUser).toHaveBeenCalledWith(
                 mockLike.postId,
-                mockLike.userId,
-                undefined
+                mockLike.userId
             );
             expect(likeRepository.create).toHaveBeenCalledWith(
                 { postId: mockLike.postId, userId: mockLike.userId },
-                undefined
+                expect.objectContaining({ session: expect.anything() })
             );
             expect(result).toEqual(mockLike);
         });
 
         it("should delete a like if exists", async () => {
             likeRepository.findByPostAndUser.mockResolvedValue(mockLike);
+            likeRepository.findById.mockResolvedValue(mockLike);
             likeRepository.hardDelete.mockResolvedValue(mockLike);
 
             const result = await likeService.toggleLike(
@@ -185,12 +241,11 @@ describe("LikeService", () => {
 
             expect(likeRepository.findByPostAndUser).toHaveBeenCalledWith(
                 mockLike.postId,
-                mockLike.userId,
-                undefined
+                mockLike.userId
             );
             expect(likeRepository.hardDelete).toHaveBeenCalledWith(
                 mockLike._id,
-                undefined
+                expect.objectContaining({ session: expect.anything() })
             );
             expect(result).toBeNull();
         });
