@@ -1,4 +1,4 @@
-import { Status } from "@src/models/constants";
+import { Status } from "../models/constants";
 import mongoose, { Model, Document, SaveOptions, QueryOptions } from "mongoose";
 
 export abstract class BaseRepository<T extends Document> {
