@@ -45,12 +45,14 @@ describe("LikeService", () => {
         withTransaction: jest.fn(),
     } as unknown as mongoose.ClientSession;
 
-    beforeEach(() => {
-        jest.clearAllMocks();
+    beforeAll(() => {
         likeRepository = new LikeRepository() as jest.Mocked<LikeRepository>;
         postRepository = new PostRepository() as jest.Mocked<PostRepository>;
         likeService = new LikeService(likeRepository, postRepository);
+    });
 
+    beforeEach(() => {
+        jest.clearAllMocks();
         jest.spyOn(mongoose, "startSession").mockImplementation(() =>
             Promise.resolve(mockSession)
         );

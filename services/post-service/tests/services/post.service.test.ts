@@ -21,10 +21,13 @@ describe("PostService", () => {
         status: Status.ACTIVE,
     } as Partial<IPost> as IPost;
 
-    beforeEach(() => {
-        jest.clearAllMocks();
+    beforeAll(() => {
         postRepository = new PostRepository() as jest.Mocked<PostRepository>;
         postService = new PostService(postRepository);
+    });
+
+    beforeEach(() => {
+        jest.clearAllMocks();
     });
 
     describe("createPost", () => {

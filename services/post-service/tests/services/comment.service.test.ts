@@ -50,13 +50,15 @@ describe("CommentService", () => {
         withTransaction: jest.fn(),
     } as unknown as mongoose.ClientSession;
 
-    beforeEach(() => {
-        jest.clearAllMocks();
+    beforeAll(() => {
         commentRepository =
             new CommentRepository() as jest.Mocked<CommentRepository>;
         postRepository = new PostRepository() as jest.Mocked<PostRepository>;
         commentService = new CommentService(commentRepository, postRepository);
+    });
 
+    beforeEach(() => {
+        jest.clearAllMocks();
         jest.spyOn(mongoose, "startSession").mockImplementation(() =>
             Promise.resolve(mockSession)
         );
