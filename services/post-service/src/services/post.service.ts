@@ -1,7 +1,6 @@
 import { PostRepository } from "../repositories/post.repository";
 import { IPost } from "../models/post.model";
-import { Status } from "@src/models/constants";
-import mongoose, { ClientSession } from "mongoose";
+import mongoose from "mongoose";
 
 export class PostService {
     constructor(private postRepository: PostRepository) {}
@@ -64,59 +63,5 @@ export class PostService {
      */
     async deletePost(id: mongoose.Types.ObjectId): Promise<IPost | null> {
         return this.postRepository.delete(id);
-    }
-
-    /**
-     * Updates a post's like counter
-     * @param postId MongoDB ObjectId of the post to update
-     * @param action Whether to increment or decrement the counter
-     * @param session Optional MongoDB transaction session
-     * @returns Promise resolving to the updated post document or null if not found
-     */
-    async updateLikeCounter(
-        postId: mongoose.Types.ObjectId,
-        action: "increment" | "decrement",
-        session?: ClientSession
-    ): Promise<IPost | null> {
-        if (action === "increment") {
-            return this.postRepository.incrementCounter(
-                postId,
-                "likeCount",
-                session ? { session } : undefined
-            );
-        } else {
-            return this.postRepository.decrementCounter(
-                postId,
-                "likeCount",
-                session ? { session } : undefined
-            );
-        }
-    }
-
-    /**
-     * Updates a post's comment counter
-     * @param postId MongoDB ObjectId of the post to update
-     * @param action Whether to increment or decrement the counter
-     * @param session Optional MongoDB transaction session
-     * @returns Promise resolving to the updated post document or null if not found
-     */
-    async updateCommentCounter(
-        postId: mongoose.Types.ObjectId,
-        action: "increment" | "decrement",
-        session?: ClientSession
-    ): Promise<IPost | null> {
-        if (action === "increment") {
-            return this.postRepository.incrementCounter(
-                postId,
-                "commentCount",
-                session ? { session } : undefined
-            );
-        } else {
-            return this.postRepository.decrementCounter(
-                postId,
-                "commentCount",
-                session ? { session } : undefined
-            );
-        }
     }
 }

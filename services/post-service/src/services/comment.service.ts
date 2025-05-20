@@ -1,134 +1,175 @@
 import { CommentRepository } from "@src/repositories/comment.repository";
 import { IComment } from "@src/models/comment.model";
-import mongoose, { QueryOptions } from "mongoose";
-import { Status } from "@src/models/constants";
+import mongoose from "mongoose";
+import { PostRepository } from "@src/repositories/post.repository";
 
 export class CommentService {
-    constructor(private commentRepository: CommentRepository) {}
+    constructor(
+        private commentRepository: CommentRepository,
+        private postRepository: PostRepository
+    ) {}
 
     /**
      * Create a new comment
      * @param commentData Comment data to create
-     * @param options Optional database options (e.g., session)
      * @returns Created comment document
      */
-    async createComment(
-        commentData: Partial<IComment>,
-        options?: QueryOptions
-    ): Promise<IComment> {
-        return this.commentRepository.create(commentData, options);
+    async createComment(commentData: Partial<IComment>): Promise<IComment> {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+
+        try {
+            const [createdComment] = await Promise.all([
+                this.commentRepository.create(commentData, { session }),
+                this.postRepository.incrementCounter(
+                    commentData.postId!,
+                    "commentCount",
+                    { session }
+                ),
+            ]);
+            await session.commitTransaction();
+            return createdComment;
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
+        }
     }
 
     /**
      * Get comment by ID
      * @param id Comment ID
-     * @param options Optional database options
      * @returns Comment document or null if not found
      */
     async getCommentById(
-        id: mongoose.Types.ObjectId,
-        options?: QueryOptions
+        id: mongoose.Types.ObjectId
     ): Promise<IComment | null> {
-        return this.commentRepository.findById(id, options);
+        return this.commentRepository.findById(id);
     }
 
     /**
      * Get all comments for a specific post
      * @param postId Post ID
-     * @param options Optional database options
      * @returns Array of comment documents
      */
     async getCommentsByPost(
-        postId: mongoose.Types.ObjectId,
-        options?: QueryOptions
+        postId: mongoose.Types.ObjectId
     ): Promise<IComment[]> {
-        return this.commentRepository.findByPost(postId, options);
+        return this.commentRepository.findByPost(postId);
     }
 
     /**
      * Get all comments by a specific author
      * @param authorId Author ID
-     * @param options Optional database options
      * @returns Array of comment documents
      */
-    async getCommentsByAuthor(
-        authorId: string,
-        options?: QueryOptions
-    ): Promise<IComment[]> {
-        return this.commentRepository.findByAuthor(authorId, options);
+    async getCommentsByAuthor(authorId: string): Promise<IComment[]> {
+        return this.commentRepository.findByAuthor(authorId);
     }
 
     /**
      * Get all replies to a specific comment
      * @param parentCommentId Parent comment ID
-     * @param options Optional database options
      * @returns Array of reply comments
      */
     async getCommentReplies(
-        parentCommentId: mongoose.Types.ObjectId,
-        options?: QueryOptions
+        parentCommentId: mongoose.Types.ObjectId
     ): Promise<IComment[]> {
-        return this.commentRepository.findReplies(parentCommentId, options);
+        return this.commentRepository.findReplies(parentCommentId);
     }
 
     /**
      * Update a comment
      * @param id Comment ID
      * @param updateData Data to update
-     * @param options Optional database options
      * @returns Updated comment document or null if not found
      */
     async updateComment(
         id: mongoose.Types.ObjectId,
-        updateData: Partial<IComment>,
-        options?: QueryOptions
+        updateData: Partial<IComment>
     ): Promise<IComment | null> {
         // Prevent changing certain fields
         const { postId, authorId, parentCommentId, ...safeUpdateData } =
             updateData;
-        return this.commentRepository.update(id, safeUpdateData, options);
+        return this.commentRepository.update(id, safeUpdateData);
     }
 
     /**
      * Soft delete a comment (set status to DELETED)
      * @param id Comment ID
-     * @param options Optional database options
      * @returns Updated comment document or null if not found
      */
-    async deleteComment(
-        id: mongoose.Types.ObjectId,
-        options?: QueryOptions
-    ): Promise<IComment | null> {
-        return this.commentRepository.delete(id, options);
+    async deleteComment(id: mongoose.Types.ObjectId): Promise<IComment | null> {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const foundComment = await this.commentRepository.findById(id);
+            if (!foundComment) {
+                throw new Error("Comment not found");
+            }
+
+            const [deletedComment] = await Promise.all([
+                this.commentRepository.delete(id, { session }),
+                this.postRepository.decrementCounter(
+                    foundComment.postId!,
+                    "commentCount",
+                    { session }
+                ),
+            ]);
+            await session.commitTransaction();
+            return deletedComment;
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
+        }
     }
 
     /**
      * Permanently delete a comment
      * @param id Comment ID
-     * @param options Optional database options
      * @returns Deleted comment document or null if not found
      */
     async hardDeleteComment(
-        id: mongoose.Types.ObjectId,
-        options?: QueryOptions
+        id: mongoose.Types.ObjectId
     ): Promise<IComment | null> {
-        return this.commentRepository.hardDelete(id, options);
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            const foundComment = await this.commentRepository.findById(id);
+            if (!foundComment) {
+                throw new Error("Comment not found");
+            }
+
+            const [deletedComment] = await Promise.all([
+                this.commentRepository.hardDelete(id, { session }),
+                this.postRepository.decrementCounter(
+                    foundComment.postId!,
+                    "commentCount",
+                    { session }
+                ),
+            ]);
+            await session.commitTransaction();
+            return deletedComment;
+        } catch (error) {
+            await session.abortTransaction();
+            throw error;
+        } finally {
+            session.endSession();
+        }
     }
 
     /**
      * Recursively get all replies for a comment
      * @param parentCommentId Parent comment ID
-     * @param options Optional database options
      * @returns Array of replies with nested replies
      */
     async getRepliesRecursive(
-        parentCommentId: mongoose.Types.ObjectId,
-        options?: QueryOptions
+        parentCommentId: mongoose.Types.ObjectId
     ): Promise<Partial<IComment>[]> {
-        const directReplies = await this.getCommentReplies(
-            parentCommentId,
-            options
-        );
+        const directReplies = await this.getCommentReplies(parentCommentId);
 
         if (directReplies.length === 0) {
             return [];
@@ -137,8 +178,7 @@ export class CommentService {
         return Promise.all(
             directReplies.map(async (reply) => {
                 const nestedReplies = await this.getRepliesRecursive(
-                    reply._id as mongoose.Types.ObjectId,
-                    options
+                    reply._id as mongoose.Types.ObjectId
                 );
                 return { ...reply, replies: nestedReplies };
             })
@@ -148,18 +188,15 @@ export class CommentService {
     /**
      * Get all comments for a post with nested replies
      * @param postId Post ID
-     * @param options Optional database options
      * @returns Array of top-level comments with nested replies
      */
     async getNestedCommentsByPost(
-        postId: mongoose.Types.ObjectId,
-        options?: QueryOptions
+        postId: mongoose.Types.ObjectId
     ): Promise<Partial<IComment>[]> {
         // Get all top-level comments (where parentCommentId is null)
         const topLevelComments = await this.commentRepository.findByPost(
             postId,
             {
-                ...options,
                 parentCommentId: null,
             }
         );
@@ -168,8 +205,7 @@ export class CommentService {
         return Promise.all(
             topLevelComments.map(async (comment) => {
                 const replies = await this.getRepliesRecursive(
-                    comment._id as mongoose.Types.ObjectId,
-                    options
+                    comment._id as mongoose.Types.ObjectId
                 );
                 return { ...comment, replies };
             })
