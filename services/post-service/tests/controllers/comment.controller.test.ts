@@ -28,14 +28,16 @@ describe("CommentController", () => {
         parentCommentId: mockComment._id as mongoose.Types.ObjectId,
     };
 
-    beforeEach(() => {
+    beforeAll(() => {
         // Initialize the mocked CommentService
         commentService = new CommentService(
             {} as any,
             {} as any
         ) as jest.Mocked<CommentService>;
         commentController = new CommentController(commentService);
+    });
 
+    beforeEach(() => {
         // Mock response object
         mockResponse = {
             status: jest.fn().mockReturnThis(),

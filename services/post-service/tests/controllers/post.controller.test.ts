@@ -21,10 +21,13 @@ describe("PostController", () => {
         authorId: "user123",
     } as Partial<IPost> as IPost;
 
-    beforeEach(() => {
+    beforeAll(() => {
+        // Initialize the mocked PostService
         postService = new PostService({} as any) as jest.Mocked<PostService>;
         postController = new PostController(postService);
+    });
 
+    beforeEach(() => {
         mockResponse = {
             status: jest.fn().mockReturnThis(),
             json: jest.fn().mockImplementation((result) => {

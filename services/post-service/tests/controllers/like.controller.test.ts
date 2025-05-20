@@ -21,14 +21,16 @@ describe("LikeController", () => {
         userId: "user123",
     } as Partial<ILike> as ILike;
 
-    beforeEach(() => {
+    beforeAll(() => {
         // Initialize the mocked LikeService
         likeService = new LikeService(
             {} as any,
             {} as any
         ) as jest.Mocked<LikeService>;
         likeController = new LikeController(likeService);
+    });
 
+    beforeEach(() => {
         // Mock response object
         mockResponse = {
             status: jest.fn().mockReturnThis(),
