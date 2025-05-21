@@ -57,7 +57,7 @@ export class CommentService {
     async getCommentsByPost(
         postId: mongoose.Types.ObjectId
     ): Promise<IComment[]> {
-        return this.commentRepository.findByPost(postId);
+        return this.commentRepository.findByPost({ postId });
     }
 
     /**
@@ -195,12 +195,11 @@ export class CommentService {
         postId: mongoose.Types.ObjectId
     ): Promise<Partial<IComment>[]> {
         // Get all top-level comments (where parentCommentId is null)
-        const topLevelComments = await this.commentRepository.findByPost(
+        const topLevelComments = await this.commentRepository.findByPost({
             postId,
-            {
-                parentCommentId: null,
-            }
-        );
+            parentCommentId: null,
+        });
+        console.log("1");
 
         // For each top-level comment, get its replies recursively
         return Promise.all(

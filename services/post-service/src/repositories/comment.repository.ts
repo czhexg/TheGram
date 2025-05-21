@@ -8,10 +8,13 @@ export class CommentRepository extends BaseRepository<IComment> {
     }
 
     async findByPost(
-        postId: mongoose.Types.ObjectId,
+        filter: {
+            postId: mongoose.Types.ObjectId;
+            parentCommentId?: mongoose.Types.ObjectId | null;
+        },
         options?: QueryOptions
     ): Promise<IComment[]> {
-        return this.model.find({ postId }, options).exec();
+        return this.model.find(filter, options).exec();
     }
 
     async findByAuthor(
